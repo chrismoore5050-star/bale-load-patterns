@@ -1,0 +1,636 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bale Load Patterns</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Barlow:wght@400;500;600&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+<style>
+/* Layout: one working column. Pattern picker, side-view stage with plan view below, transport controls, step chips, sheet notes. */
+:root{
+  --bg:#E8EBEA; --panel:#F6F7F6; --ink:#1B2124; --muted:#5A6569; --line:#C8CFCE;
+  --fork:#E3A317; --fork2:#B67D0A; --steel:#4A535A; --steel2:#7F8A90; --tire:#202427;
+  --bale:#FBFAF5; --bale2:#E4DECB; --baleEdge:#9A9588; --baleInk:#4A4538; --tie:#6C7E91;
+  --wall:#D7DDDC; --wallLine:#C2CACA; --floor:#8C7154; --ground:#BEC4C1; --dock:#A7AEAB;
+  --signal:#D2461C; --chip:#EEF1F0;
+  --display:"Barlow Condensed","Arial Narrow",sans-serif;
+  --body:"Barlow",system-ui,-apple-system,sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,Menlo,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#121618; --panel:#1A2023; --ink:#E4E9E8; --muted:#95A1A4; --line:#2E373A;
+  --fork:#E2A21A; --fork2:#A6720F; --steel:#7F8A90; --steel2:#56616A; --tire:#0A0C0D;
+  --bale:#E8E4D8; --bale2:#C8C0AA; --baleEdge:#8C877A; --baleInk:#3E392E; --tie:#7A8DA1;
+  --wall:#20272A; --wallLine:#2A3336; --floor:#6E5841; --ground:#2A3034; --dock:#363D40;
+  --signal:#FF6B3D; --chip:#20272A; color-scheme:dark;
+}}
+:root[data-theme="dark"]{
+  --bg:#121618; --panel:#1A2023; --ink:#E4E9E8; --muted:#95A1A4; --line:#2E373A;
+  --fork:#E2A21A; --fork2:#A6720F; --steel:#7F8A90; --steel2:#56616A; --tire:#0A0C0D;
+  --bale:#E8E4D8; --bale2:#C8C0AA; --baleEdge:#8C877A; --baleInk:#3E392E; --tie:#7A8DA1;
+  --wall:#20272A; --wallLine:#2A3336; --floor:#6E5841; --ground:#2A3034; --dock:#363D40;
+  --signal:#FF6B3D; --chip:#20272A; color-scheme:dark;
+}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font:400 15px/1.5 var(--body);}
+.wrap{max-width:1120px;margin:0 auto;padding-inline:16px;padding-block:20px 40px;display:flex;flex-direction:column;gap:18px}
+.eyebrow{font:600 12px var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+h1{font:700 clamp(30px,6vw,46px)/1 var(--display);letter-spacing:.01em;margin:4px 0 6px;text-wrap:balance}
+.lede{margin:0;color:var(--muted);max-width:62ch}
+.picker{display:flex;flex-wrap:wrap;gap:10px 18px;align-items:center}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:6px;overflow:hidden;background:var(--panel)}
+.seg button{font:600 15px var(--body);color:var(--ink);background:transparent;border:0;padding:8px 14px;cursor:pointer;border-right:1px solid var(--line)}
+.seg button:last-child{border-right:0}
+.seg button[aria-pressed="true"]{background:var(--ink);color:var(--panel)}
+.seg.small button{font:600 12px var(--mono);padding:6px 10px}
+.counts{display:flex;gap:6px;flex-wrap:wrap}
+.counts button{font:600 14px var(--mono);border:1px solid var(--line);background:var(--panel);color:var(--ink);border-radius:999px;padding:6px 12px;cursor:pointer}
+.counts button[aria-pressed="true"]{border-color:var(--fork);background:var(--fork);color:#1B1A14}
+button:focus-visible,input:focus-visible{outline:2px solid var(--signal);outline-offset:2px}
+.stage{background:var(--panel);border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.stagehead{display:flex;flex-wrap:wrap;justify-content:space-between;gap:4px 16px;padding:12px 16px;border-bottom:1px solid var(--line);align-items:baseline}
+.patname{font:700 24px/1.1 var(--display)}
+.patsub{font:500 12px var(--mono);color:var(--muted);letter-spacing:.04em}
+.tally{font:600 22px var(--display);font-variant-numeric:tabular-nums}
+.tally small{font:500 12px var(--mono);color:var(--muted);margin-left:4px}
+canvas{display:block;width:100%}
+.planbar{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:8px 16px;border-top:1px solid var(--line);flex-wrap:wrap}
+.lbl{font:600 11px var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.controls{display:flex;flex-wrap:wrap;gap:10px 14px;align-items:center;padding:12px 16px;border-top:1px solid var(--line)}
+.transport{display:flex;gap:6px}
+.transport button{font:600 14px var(--body);border:1px solid var(--line);background:var(--bg);color:var(--ink);border-radius:6px;padding:8px 12px;cursor:pointer;min-width:44px}
+.transport #play{background:var(--ink);color:var(--panel);border-color:var(--ink);min-width:86px}
+.toggle{display:flex;gap:6px;align-items:center;font:500 14px var(--body);color:var(--muted);cursor:pointer}
+.readout{padding:0 16px 12px;display:flex;flex-wrap:wrap;gap:2px 12px;align-items:baseline}
+.readout b{font:700 20px var(--display)}
+.readout span{color:var(--muted)}
+.chips{display:flex;flex-wrap:wrap;gap:5px;padding:0 16px 16px}
+.chips button{font:600 12px var(--mono);font-variant-numeric:tabular-nums;width:36px;height:30px;border-radius:4px;border:1px solid var(--line);background:var(--chip);color:var(--muted);cursor:pointer;padding:0}
+.chips button.top{border-style:dashed}
+.chips button.done{background:var(--bale);color:var(--baleInk);border-color:var(--baleEdge)}
+.chips button.done.top{background:var(--bale2)}
+.chips button.cur{outline:2px solid var(--signal);outline-offset:1px;color:var(--ink)}
+.chips button.cur.done{color:var(--baleInk)}
+.info{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:18px}
+.info section{min-width:0}
+h2{font:700 20px var(--display);margin:0 0 6px}
+.info ul{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:4px}
+.legend{display:flex;flex-direction:column;gap:8px}
+.key{display:flex;gap:10px;align-items:center}
+.sw{width:30px;height:18px;border:1px solid var(--baleEdge);flex:none;background:var(--bale);
+  background-image:repeating-linear-gradient(90deg,transparent 0 6px,var(--tie) 6px 7px)}
+.sw.tall{width:14px;height:26px;background-image:repeating-linear-gradient(0deg,transparent 0 5px,var(--tie) 5px 6px)}
+.sw.top{background-color:var(--bale2)}
+.sw.gap{background:transparent;border-style:dashed;border-color:var(--muted)}
+.sw.cur{background:transparent;border:2px dashed var(--signal)}
+.fine{font-size:13px;color:var(--muted);margin:8px 0 0}
+@media (prefers-reduced-motion: reduce){*{scroll-behavior:auto}}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <header>
+    <div class="eyebrow">Cotton bale clamp · loading sheet</div>
+    <h1>Bale Load Patterns</h1>
+    <p class="lede">Pick a container or van and a bale count, then watch the clamp truck load it in step order from the sheet.</p>
+  </header>
+
+  <div class="picker">
+    <div class="seg" id="kindSeg" role="group" aria-label="Trailer type"></div>
+    <div class="counts" id="countSeg" role="group" aria-label="Bale count"></div>
+  </div>
+
+  <div class="stage">
+    <div class="stagehead">
+      <div><div class="patname" id="patName"></div><div class="patsub" id="patSub"></div></div>
+    </div>
+    <canvas id="side" aria-label="Side view of the trailer being loaded"></canvas>
+    <div class="planbar">
+      <span class="lbl">Plan view · looking down</span>
+      <div class="seg small" id="tierSeg" role="group" aria-label="Plan view tier">
+        <button data-t="both" aria-pressed="true">Both tiers</button>
+        <button data-t="bottom" aria-pressed="false">Bottom</button>
+        <button data-t="top" aria-pressed="false">Top</button>
+      </div>
+    </div>
+    <canvas id="plan" aria-label="Plan view of the load"></canvas>
+    <div class="controls">
+      <div class="transport">
+        <button id="restart" title="Restart" aria-label="Restart">⟲</button>
+        <button id="prev" title="Previous step" aria-label="Previous step">◀</button>
+        <button id="play">Pause</button>
+        <button id="next" title="Next step" aria-label="Next step">▶</button>
+      </div>
+      <div class="seg small" id="speedSeg" role="group" aria-label="Speed">
+        <button data-s="1" aria-pressed="false">1×</button>
+        <button data-s="2" aria-pressed="true">2×</button>
+        <button data-s="4" aria-pressed="false">4×</button>
+      </div>
+      <label class="toggle"><input type="checkbox" id="nums" checked> Step numbers</label>
+    </div>
+    <div class="readout" id="readout"></div>
+    <div class="chips" id="chips"></div>
+  </div>
+
+  <div class="info">
+    <section>
+      <h2>From the sheet</h2>
+      <ul id="notes"></ul>
+      <p class="fine" id="fine"></p>
+    </section>
+    <section>
+      <h2>Key</h2>
+      <div class="legend">
+        <div class="key"><span class="sw tall"></span> Bottom tier, bales standing on end</div>
+        <div class="key"><span class="sw top"></span> Top tier, bales laid flat</div>
+        <div class="key"><span class="sw cur"></span> Spot the next stack goes</div>
+        <div class="key"><span class="sw gap"></span> Gap or short stack (plan view)</div>
+      </div>
+      <p class="fine">Side view shows one bale per stack; the plan view shows how many bales sit across the width.</p>
+    </section>
+  </div>
+</div>
+
+<script>
+(()=>{
+const $=id=>document.getElementById(id);
+const dpr=Math.min(2,window.devicePixelRatio||1);
+const sideC=$('side'), planC=$('plan'), sx=sideC.getContext('2d'), pxc=planC.getContext('2d');
+const MONO='"IBM Plex Mono", ui-monospace, monospace';
+const reduce=matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+const KINDS={container:{label:'Container',counts:[90,89,88,87,86]},van:{label:'53 ft van',counts:[90,89,88,87,86]}};
+
+/* ---------- patterns ---------- */
+function enclosed(kind,total){
+  const t=33,x0=4,L=kind==='container'?474:630;
+  const topSteps=kind==='container'?[3,6,8,11,14,16,19,22]:[6,9,12,15,18];
+  const slots=[],bottoms=[];let tj=0;
+  for(let s=1;s<=22;s++){
+    if(topSteps.includes(s)){
+      let x;
+      if(kind==='container') x=x0+tj*55;
+      else{const a=bottoms[bottoms.length-2],b=bottoms[bottoms.length-1];x=(a.x+b.x+t)/2-27.5;}
+      slots.push({step:s,layer:1,x,w:55,h:t,y:0+55,cells:[1,1,1,1]});tj++;
+    }else{const sl={step:s,layer:0,x:x0+bottoms.length*t,w:t,h:55,y:0,cells:[1,1,1,1]};bottoms.push(sl);slots.push(sl);}
+  }
+  const less=88-total;
+  if(less>0){const tg=kind==='container'?slots.filter(s=>s.layer).pop():slots[slots.length-1];tg.cells=less===1?[1,1,1,0]:[1,1,0,0];}
+  if(total>88){
+    const n=total-88;
+    if(kind==='container'){
+      const end=x0+bottoms.length*t, topEnd=x0+8*55;
+      slots.push({step:'+',extra:true,cross:true,layer:1,x:topEnd,w:L-topEnd,h:21*n,y:55,stack:n,cells:Array(n).fill(1)});
+    }else{
+      const a=bottoms.find(b=>b.step===19),b=bottoms.find(b=>b.step===20),c=(a.x+b.x+t)/2;
+      const idx=slots.indexOf(b)+1;
+      slots.splice(idx,0,{step:'+',extra:true,layer:1,x:c-27.5,w:55,h:21,y:55,cells:n===1?[0,1,0,0]:[0,1,1,0]});
+    }
+  }
+  const F=kind==='container'?52:48, IH=kind==='container'?106:108;
+  const homeFx=L+175;
+  return {kind,total,L,W:kind==='container'?92:100,F,IH,slots,homeFx,xmin:-30,xmax:homeFx+124,ymin:-8,ymax:F+IH+26};
+}
+function flatbed(total){
+  const t=28,n=total>=89?22:21,x0=10,L=636,F=60;
+  const slots=[];
+  for(let i=0;i<n;i++) slots.push({step:i+1,layer:0,x:x0+i*t,w:t,h:55,y:0,cells:[1,1,1]});
+  if(total===89) slots[10].cells=[1,0,1];
+  if(total===88) slots[10].cells=[1,1,1,1];
+  for(let j=0;j<8;j++){const c=x0+n*t*(j+.5)/8;slots.push({step:n+j+1,layer:1,x:c-27.5,w:55,h:28,y:55,cells:[1,1,1]});}
+  if(total===86) slots[n].cells=[1,0,1];
+  const homeCx=L+150;
+  return {kind:'flatbed',total,L,W:102,F,slots,homeCx,xmin:-30,xmax:homeCx+70,ymin:-8,ymax:182};
+}
+const NOTES={
+  container:{
+    base:['56 bales on the bottom: 14 stacks, 4 wide.','32 bales on top: 8 stacks, 4 wide.','Follow the number steps. Top stacks go in at steps 3, 6, 8, 11, 14, 16, 19 and 22.'],
+    87:'87-bale load: load the same way. The last stack on top gets 3 bales.',
+    86:'86-bale load: load the same way. The last stack on top gets 2 bales.',
+    89:'89-bale load: after the last grab, lay 1 extra bale flat, turned crosswise, in the small space left at the back on top of the last stacks.',
+    90:'90-bale load: same spot, 2 extra bales laid flat on top of each other. High cube containers only; a standard container is too low.'},
+  van:{
+    base:['68 bales on the bottom: 17 stacks, 4 wide.','20 bales on top: 5 stacks, 4 wide, at steps 6, 9, 12, 15 and 18.','Follow the number steps.'],
+    87:'87-bale load: load the same way. The last stack (step 22) gets 3 bales.',
+    86:'86-bale load: load the same way. The last stack (step 22) gets 2 bales.',
+    89:'89-bale load: after steps 19 and 20, lay 1 extra bale flat, long ways, on top of them. Then finish with 21 and 22.',
+    90:'90-bale load: after steps 19 and 20, lay 2 extra bales flat, long ways, side by side on top of them. Then finish with 21 and 22.'},
+  flatbed:{
+    90:['3 rows of 22 on the bottom, 66 bales.','The rest on top: 3 rows of 8, 24 bales.'],
+    89:['2 outside rows of 22 on the bottom.','Middle row of 21, leaving a gap somewhere in the middle. 65 on the bottom.','3 rows of 8 on top, 24 bales.'],
+    88:['64 bales on the bottom, 3 wide with one row turned 4 wide.','24 bales on top: 3 rows of 8.'],
+    87:['63 bales on the bottom: 3 rows of 21.','24 bales on top: 3 rows of 8.'],
+    86:['3 rows of 21 on the bottom, 63 bales.','The rest on top, 23 bales, with a gap in the front.']}
+};
+
+function build(P){
+  let t=0,frontier=0;
+  P.steps=P.slots.map(s=>{
+    const st={slot:s,t0:t};
+    if(P.kind!=='flatbed'){
+      const right=s.x+s.w;
+      st.fx=s.layer?Math.max(right,frontier):right; st.off=st.fx-right;
+      const d=Math.abs(P.homeFx-st.fx);
+      st.ph=s.layer
+        ?[['pick',.5],['lift',(s.y)/60+.25],['drive',d/240+.15],['set',.35],['release',.15],['back',d/300+.25]]
+        :[['pick',.5],['drive',d/240+.15],['set',.35],['release',.15],['back',d/300+.2]];
+      if(!s.layer) frontier=Math.max(frontier,right);
+    }else{
+      st.cx=s.x+s.w/2; st.off=0;
+      const d=Math.abs(P.homeCx-st.cx), top=P.F+s.y;
+      st.ph=[['pick',.5],['drive',d/240+.15],['turnIn',.45],['lift',top/60+.2],['set',.35],['release',.15],['lower',top/100],['turnOut',.45],['back',d/300+.2]];
+    }
+    st.dur=st.ph.reduce((a,p)=>a+p[1],0); t+=st.dur; return st;
+  });
+  P.time=t;
+  // position labels within tier
+  [0,1].forEach(l=>P.slots.filter(s=>s.layer===l&&!s.extra).sort((a,b)=>a.x-b.x).forEach((s,i)=>s.pos=i+1));
+  return P;
+}
+
+/* ---------- state ---------- */
+let kind='container',total=88,P,T=0,playing=!reduce,speed=2,showNums=true,tier='both',camX=null,s=1;
+const sm=k=>k*k*(3-2*k), lerp=(a,b,k)=>a+(b-a)*k, clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+const bales=sl=>sl.cells.reduce((a,b)=>a+b,0);
+
+function stateAt(T){
+  const N=P.steps.length;
+  if(T>=P.time) return {cur:N,placed:N,fork:P.kind==='flatbed'?{cx:P.homeCx,lift:0,turn:0,load:null}:{fx:P.homeFx,lift:0,load:null}};
+  let i=0; while(i<N-1&&P.steps[i+1].t0<=T) i++;
+  const st=P.steps[i],sl=st.slot; let u=T-st.t0,name=st.ph[st.ph.length-1][0],k=1;
+  for(const [n,d] of st.ph){ if(u<d){name=n;k=d>0?u/d:1;break;} u-=d; }
+  const e=sm(clamp(k,0,1));
+  const L={w:sl.w,h:sl.h,off:st.off,top:sl.layer===1,alpha:1,stack:sl.stack,cross:sl.cross};
+  let placed=i,f;
+  if(P.kind!=='flatbed'){
+    const H=st.fx,hm=P.homeFx,ty=sl.y;
+    switch(name){
+      case 'pick': f={fx:hm,lift:3*e,load:{...L,alpha:e}};break;
+      case 'lift': f={fx:hm,lift:lerp(3,ty+3,e),load:L};break;
+      case 'drive': f={fx:lerp(hm,H,e),lift:ty+3,load:L};break;
+      case 'set': f={fx:H,lift:lerp(ty+3,ty,e),load:L};break;
+      case 'release': placed=i+1; f={fx:H,lift:ty,load:null};break;
+      default: placed=i+1; f={fx:lerp(H,hm,e),lift:lerp(ty,0,Math.min(1,k*2.5)),load:null};
+    }
+  }else{
+    const hm=P.homeCx,C0=st.cx,ty=P.F+sl.y;
+    switch(name){
+      case 'pick': f={cx:hm,lift:3*e,turn:0,load:{...L,alpha:e}};break;
+      case 'drive': f={cx:lerp(hm,C0,e),lift:3,turn:0,load:L};break;
+      case 'turnIn': f={cx:C0,lift:3,turn:e,load:L};break;
+      case 'lift': f={cx:C0,lift:lerp(3,ty+3,e),turn:1,load:L};break;
+      case 'set': f={cx:C0,lift:lerp(ty+3,ty,e),turn:1,load:L};break;
+      case 'release': placed=i+1; f={cx:C0,lift:ty,turn:1,load:null};break;
+      case 'lower': placed=i+1; f={cx:C0,lift:lerp(ty,0,e),turn:1,load:null};break;
+      case 'turnOut': placed=i+1; f={cx:C0,lift:0,turn:1-e,load:null};break;
+      default: placed=i+1; f={cx:lerp(C0,hm,e),lift:0,turn:0,load:null};
+    }
+  }
+  return {cur:i,placed,fork:f};
+}
+
+/* ---------- colors ---------- */
+let C={};
+function readColors(){const cs=getComputedStyle(document.documentElement);
+  ['fork','fork2','steel','steel2','tire','bale','bale2','baleEdge','baleInk','tie','wall','wallLine','floor','ground','dock','signal','ink','muted','line','panel','bg'].forEach(k=>C[k]=cs.getPropertyValue('--'+k).trim());}
+readColors();
+matchMedia('(prefers-color-scheme: dark)').addEventListener('change',readColors);
+new MutationObserver(readColors).observe(document.documentElement,{attributes:true,attributeFilter:['data-theme','class','style']});
+
+/* ---------- drawing helpers ---------- */
+function rr(ctx,x,y,w,h,r){r=Math.min(r,Math.abs(w)/2,Math.abs(h)/2);ctx.beginPath();ctx.moveTo(x+r,y);ctx.arcTo(x+w,y,x+w,y+h,r);ctx.arcTo(x+w,y+h,x,y+h,r);ctx.arcTo(x,y+h,x,y,r);ctx.arcTo(x,y,x+w,y,r);ctx.closePath();ctx.fill();}
+function ln(ctx,x1,y1,x2,y2,w,col){ctx.strokeStyle=col;ctx.lineWidth=w/s;ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke();}
+function wheel(ctx,x,y,r){ctx.fillStyle=C.tire;ctx.beginPath();ctx.arc(x,y,r,0,7);ctx.fill();ctx.fillStyle=C.steel2;ctx.beginPath();ctx.arc(x,y,r*.48,0,7);ctx.fill();}
+function bale(ctx,x,y,w,h,o={}){
+  if(o.stack>1){const hh=h/o.stack;for(let k=0;k<o.stack;k++)bale(ctx,x,y+k*hh,w,hh,{...o,stack:1});return;}
+  if(o.cross){ctx.save(); if(o.alpha!=null) ctx.globalAlpha*=o.alpha; ctx.fillStyle=C.bale2; rr(ctx,x+.5,y+.5,w-1,h-1,5);
+    ctx.strokeStyle=C.baleEdge; ctx.lineWidth=1/s; ctx.stroke(); ctx.restore(); return;}
+  ctx.save(); if(o.alpha!=null) ctx.globalAlpha*=o.alpha;
+  ctx.fillStyle=o.top?C.bale2:C.bale; ctx.fillRect(x,y,w,h);
+  ctx.strokeStyle=C.tie; ctx.lineWidth=1.1/s; ctx.beginPath();
+  if(h>=w){for(let k=1;k<=5;k++){const yy=y+h*k/6;ctx.moveTo(x,yy);ctx.lineTo(x+w,yy);}}
+  else{for(let k=1;k<=5;k++){const xx=x+w*k/6;ctx.moveTo(xx,y);ctx.lineTo(xx,y+h);}}
+  ctx.stroke();
+  ctx.strokeStyle=C.baleEdge; ctx.lineWidth=1/s; ctx.strokeRect(x,y,w,h);
+  ctx.restore();
+}
+function ghost(ctx,x,y,w,h,cur){
+  ctx.save(); ctx.setLineDash([4/s,3/s]);
+  ctx.strokeStyle=cur?C.signal:C.muted; ctx.globalAlpha=cur?1:.38; ctx.lineWidth=(cur?2:1)/s;
+  ctx.strokeRect(x+.5,y+.5,w-1,h-1); ctx.restore();
+}
+function sideTxt(x,y,str,o={}){
+  const ctx=sx,X=(x-camX)*s,Y=sideC.cssH+P.ymin*s-y*s;
+  ctx.save();ctx.setTransform(dpr,0,0,dpr,0,0);
+  ctx.font=`${o.w||600} ${o.size||11}px ${MONO}`;ctx.fillStyle=o.color||C.muted;
+  ctx.textAlign=o.align||'center';ctx.textBaseline=o.base||'middle';ctx.fillText(str,X,Y);ctx.restore();
+}
+function planTxt(x,y,str,o={}){
+  const ctx=pxc,X=(x-camX)*s,Y=22+y*s;
+  ctx.save();ctx.setTransform(dpr,0,0,dpr,0,0);
+  ctx.font=`${o.w||600} ${o.size||11}px ${MONO}`;ctx.fillStyle=o.color||C.muted;
+  ctx.textAlign=o.align||'center';ctx.textBaseline=o.base||'middle';ctx.fillText(str,X,Y);ctx.restore();
+}
+
+/* ---------- forklift ---------- */
+function profile(ctx,fx,lift,load,base){
+  ctx.save(); ctx.translate(0,base);
+  const lh=load?load.h:40, mastTop=Math.max(84,lift+lh+8);
+  ctx.fillStyle=C.steel; ctx.fillRect(fx+1,3,8,82);
+  ctx.fillStyle=C.steel2; ctx.fillRect(fx+3,mastTop-82,4,82);
+  ctx.fillStyle=C.steel; ctx.fillRect(fx+1,mastTop-3,8,3);
+  if(load){ bale(ctx,fx-load.off-load.w,lift,load.w,load.h,{top:load.top,alpha:load.alpha,stack:load.stack,cross:load.cross}); }
+  ctx.fillStyle=C.steel; ctx.fillRect(fx-3,lift,5,Math.max(lh*.9,34));
+  const aH=load?load.h*.74:34, aY=load?lift+load.h*.13:lift+6;
+  ctx.save(); ctx.globalAlpha=.55; ctx.fillStyle=C.steel2; ctx.fillRect(fx-46,aY,46,aH); ctx.restore();
+  ctx.strokeStyle=C.steel; ctx.lineWidth=1.6/s; ctx.strokeRect(fx-46,aY,46,aH);
+  ln(ctx,fx-40,aY+aH-4,fx-4,aY+4,1.2,C.steel);
+  ln(ctx,fx+9,28,fx+30,36,3,C.steel);
+  ctx.fillStyle=C.fork; rr(ctx,fx+10,8,100,34,6);
+  ctx.fillStyle=C.fork2; rr(ctx,fx+80,8,34,46,10);
+  ctx.fillStyle=C.fork; rr(ctx,fx+30,38,54,8,3);
+  ctx.fillStyle=C.tire; rr(ctx,fx+54,46,16,5,2); rr(ctx,fx+66,46,5,20,2);
+  ln(ctx,fx+36,44,fx+44,62,2,C.tire); ln(ctx,fx+38,64,fx+51,60,2.4,C.tire);
+  ln(ctx,fx+24,40,fx+30,86,3,C.tire); ln(ctx,fx+86,52,fx+84,86,3,C.tire);
+  ctx.fillStyle=C.tire; ctx.fillRect(fx+22,85,68,4);
+  ctx.fillStyle=C.signal; ctx.fillRect(fx+110,40,4,5);
+  wheel(ctx,fx+26,13,13); wheel(ctx,fx+96,11,11);
+  ctx.restore();
+}
+function rear(ctx,cx,lift,load){
+  const lh=load?load.h:40, mastTop=Math.max(86,lift+lh+8);
+  if(load){
+    bale(ctx,cx-load.w/2,lift,load.w,load.h,{top:load.top});
+    ctx.fillStyle=C.steel; ctx.fillRect(cx-load.w/2-4,lift+load.h*.12,4,load.h*.76); ctx.fillRect(cx+load.w/2,lift+load.h*.12,4,load.h*.76);
+  }else{ctx.fillStyle=C.steel; ctx.fillRect(cx-26,lift+4,4,34); ctx.fillRect(cx+22,lift+4,4,34);}
+  ctx.fillStyle=C.steel; ctx.fillRect(cx-22,lift+lh*.42,44,5);
+  ctx.fillStyle=C.steel; ctx.fillRect(cx-17,2,6,84); ctx.fillRect(cx+11,2,6,84);
+  ctx.fillStyle=C.steel2; ctx.fillRect(cx-15,mastTop-84,4,84); ctx.fillRect(cx+11,mastTop-84,4,84);
+  ctx.fillStyle=C.steel; ctx.fillRect(cx-17,mastTop-4,34,4);
+  ctx.fillStyle=C.tire; rr(ctx,cx-29,0,11,24,3); rr(ctx,cx+18,0,11,24,3);
+  ctx.fillStyle=C.fork2; rr(ctx,cx-25,6,50,42,8);
+  ctx.fillStyle=C.fork; rr(ctx,cx-25,28,50,20,6);
+  ctx.fillStyle=C.signal; ctx.fillRect(cx-22,36,6,4); ctx.fillRect(cx+16,36,6,4);
+  ctx.fillStyle=C.tire; rr(ctx,cx-11,46,22,18,4);
+  ctx.fillRect(cx-25,46,4,40); ctx.fillRect(cx+21,46,4,40); ctx.fillRect(cx-27,84,54,5);
+}
+function drawFork(ctx,f,base){
+  if(P.kind!=='flatbed'){profile(ctx,f.fx,f.lift,f.load,base);return;}
+  const t=f.turn||0; ctx.save(); ctx.translate(f.cx,0);
+  if(t<.5){ctx.scale(Math.max(.03,1-2*t),1);ctx.translate(-f.cx,0);profile(ctx,f.cx-55,f.lift,f.load,0);}
+  else{ctx.scale(Math.max(.03,2*t-1),1);ctx.translate(-f.cx,0);rear(ctx,f.cx,f.lift,f.load);}
+  ctx.restore();
+}
+
+/* ---------- side view ---------- */
+function drawSlots(ctx,st,base){
+  P.slots.forEach((sl,j)=>{
+    if(j<st.placed) bale(ctx,sl.x,base+sl.y,sl.w,sl.h,{top:sl.layer===1,stack:sl.stack,cross:sl.cross});
+    else ghost(ctx,sl.x,base+sl.y,sl.w,sl.h,j===st.cur);
+  });
+}
+function slotNums(st,base){
+  if(!showNums) return;
+  const fs=clamp(Math.round(12*Math.min(1.15,s)),9,13);
+  P.slots.forEach((sl,j)=>{
+    const done=j<st.placed, n=bales(sl), part=n<sl.cells.length;
+    const cy=base+sl.y+sl.h/2;
+    sideTxt(sl.x+sl.w/2,cy+(part?5:0),String(sl.step),{size:fs,color:done?C.baleInk:(j===st.cur?C.signal:C.muted)});
+    if(part) sideTxt(sl.x+sl.w/2,cy-8,'×'+n,{size:fs-2,color:done?C.baleInk:C.muted,w:500});
+  });
+}
+function pile(ctx,x0,base,remaining,w,h){
+  const n=Math.min(3,Math.ceil(remaining/4));
+  ctx.save(); ctx.globalAlpha=.42;
+  for(let k=0;k<n;k++) bale(ctx,x0-w-k*(w+5),base,w,h,{});
+  ctx.restore();
+  if(remaining>0) sideTxt(x0-w*1.5,base+h+12,`STAGED ${remaining}`,{size:10});
+}
+function drawSide(st){
+  const ctx=sx,c=sideC;
+  ctx.setTransform(1,0,0,1,0,0); ctx.fillStyle=C.panel; ctx.fillRect(0,0,c.width,c.height);
+  ctx.setTransform(dpr*s,0,0,-dpr*s,-camX*s*dpr,(c.cssH+P.ymin*s)*dpr);
+  const loaded=P.slots.slice(0,st.placed).reduce((a,sl)=>a+bales(sl),0);
+  const carrying=st.fork.load?bales(P.slots[st.cur]):0;
+  const remaining=P.total-loaded-carrying;
+  ctx.fillStyle=C.ground; ctx.fillRect(P.xmin-60,P.ymin,P.xmax-P.xmin+120,-P.ymin);
+  if(P.kind==='flatbed'){
+    const {L,F}=P;
+    ctx.fillStyle=C.steel; ctx.fillRect(0,F-24,L,17);
+    ctx.fillRect(94,4,6,F-28); ctx.fillRect(86,0,22,5);
+    ctx.fillStyle=C.floor; ctx.fillRect(0,F-7,L,7);
+    ctx.fillStyle=C.steel; ctx.fillRect(-8,F-24,8,90);
+    for(let y=F+12;y<F+66;y+=12) ln(ctx,-8,y,0,y,1,C.steel2);
+    [L-120,L-72].forEach(x=>wheel(ctx,x,20,20));
+    ctx.fillStyle=C.tire; ctx.fillRect(L-36,8,4,F-32);
+    drawSlots(ctx,st,F);
+    pile(ctx,P.homeCx-55,0,remaining,28,55);
+    drawFork(ctx,st.fork,0);
+    slotNums(st,F);
+    sideTxt(0,F+76,'FRONT',{align:'left',size:10});
+    sideTxt(L,F-36,'REAR',{align:'right',size:10});
+    sideTxt(P.homeCx,P.ymax-12,'LOADED FROM THE SIDE',{size:10});
+  }else{
+    const {L,F,IH}=P;
+    ctx.fillStyle=C.dock; ctx.fillRect(L+8,0,P.xmax+60-(L+8),F);
+    for(let i=0;i<6;i++){ctx.fillStyle=i%2?C.tire:C.fork;ctx.fillRect(L+8+i*8,F-6,8,6);}
+    ctx.fillStyle=C.tire; ctx.fillRect(L+8,F-28,7,15);
+    ctx.fillStyle=C.dock; ctx.fillRect(L+26,F+IH+14,18,P.ymax);
+    ctx.fillStyle=C.steel; ctx.fillRect(-14,F-17,L+20,10);
+    ctx.fillRect(88,4,6,F-20); ctx.fillRect(80,0,22,5);
+    [L-118,L-70].forEach(x=>wheel(ctx,x,20,20));
+    ctx.fillStyle=C.tire; ctx.fillRect(L-34,8,4,F-26);
+    ctx.fillStyle=C.wall; ctx.fillRect(-4,F,L+4,IH);
+    ctx.strokeStyle=C.wallLine; ctx.lineWidth=1/s; ctx.beginPath();
+    if(P.kind==='container'){for(let x=6;x<L;x+=9.5){ctx.moveTo(x,F);ctx.lineTo(x,F+IH);}}
+    else{for(let x=24;x<L;x+=24){ctx.moveTo(x,F);ctx.lineTo(x,F+IH);} [F+34,F+70].forEach(y=>{ctx.moveTo(0,y);ctx.lineTo(L,y);});}
+    ctx.stroke();
+    ctx.fillStyle=C.floor; ctx.fillRect(-14,F-7,L+20,7);
+    ctx.fillStyle=C.steel; ctx.fillRect(L,F-7,4,IH+13);
+    ctx.fillStyle=C.steel2; ctx.fillRect(L-2,F-2,16,3);
+    drawSlots(ctx,st,F);
+    pile(ctx,P.homeFx,F,remaining,33,55);
+    drawFork(ctx,st.fork,F);
+    ctx.fillStyle=C.steel; ctx.fillRect(-14,F-7,10,IH+13); ctx.fillRect(-14,F+IH,L+18,6);
+    slotNums(st,F);
+    sideTxt(-4,F+IH+16,'FRONT',{align:'left',size:10});
+    sideTxt(L,F+IH+16,'REAR DOORS',{align:'right',size:10});
+    sideTxt(L+70,F/2,'DOCK',{size:10});
+  }
+}
+
+/* ---------- plan view ---------- */
+function drawPlan(st){
+  const ctx=pxc,c=planC;
+  ctx.setTransform(1,0,0,1,0,0); ctx.fillStyle=C.panel; ctx.fillRect(0,0,c.width,c.height);
+  ctx.setTransform(dpr*s,0,0,dpr*s,-camX*s*dpr,22*dpr);
+  const {L,W}=P;
+  if(P.kind==='flatbed'){ctx.fillStyle=C.ground;ctx.fillRect(P.xmin-60,W+8,P.xmax-P.xmin+120,40);}
+  else{ctx.fillStyle=C.dock;ctx.fillRect(L+8,-12,P.xmax,W+24);}
+  ctx.fillStyle=P.kind==='flatbed'?C.floor:C.wall; ctx.save(); if(P.kind==='flatbed') ctx.globalAlpha=.35; ctx.fillRect(0,0,L,W); ctx.restore();
+  ctx.strokeStyle=C.steel; ctx.lineWidth=2/s; ctx.strokeRect(0,0,L,W);
+  const drawTier=(layer,faint)=>{
+    P.slots.forEach((sl,j)=>{
+      if(sl.layer!==layer) return;
+      const n=sl.cells.length,ch=W/n,done=j<st.placed;
+      if(sl.cross){const y=(W-55)/2;
+        if(done){ctx.fillStyle=C.bale2;ctx.fillRect(sl.x+1,y,sl.w-2,55);ctx.strokeStyle=C.baleEdge;ctx.lineWidth=1/s;ctx.strokeRect(sl.x+1,y,sl.w-2,55);}
+        else{ctx.save();ctx.setLineDash([4/s,3/s]);ctx.strokeStyle=C.muted;ctx.globalAlpha=.4;ctx.lineWidth=1/s;ctx.strokeRect(sl.x+1,y,sl.w-2,55);ctx.restore();}
+        return;}
+      if(!done||faint){
+        ctx.save(); ctx.setLineDash([4/s,3/s]); ctx.strokeStyle=C.muted; ctx.globalAlpha=faint?.25:.4; ctx.lineWidth=1/s;
+        ctx.strokeRect(sl.x+1,1,sl.w-2,W-2); ctx.restore(); return;
+      }
+      sl.cells.forEach((v,k)=>{
+        const y=k*ch;
+        if(v){ctx.fillStyle=layer?C.bale2:C.bale; ctx.fillRect(sl.x+1,y+1,sl.w-2,ch-2);
+          ctx.strokeStyle=C.baleEdge; ctx.lineWidth=1/s; ctx.strokeRect(sl.x+1,y+1,sl.w-2,ch-2);}
+        else{ctx.save();ctx.setLineDash([3/s,3/s]);ctx.strokeStyle=C.muted;ctx.lineWidth=1/s;ctx.strokeRect(sl.x+3,y+3,sl.w-6,ch-6);ctx.restore();}
+      });
+    });
+  };
+  if(tier==='both'){drawTier(0);drawTier(1);}
+  else if(tier==='bottom'){drawTier(0);}
+  else{drawTier(0,true);drawTier(1);}
+  const cs=P.slots[st.cur];
+  if(cs&&st.cur>=st.placed&&(tier==='both'||(tier==='top')===(cs.layer===1))){
+    ctx.save();ctx.setLineDash([5/s,3/s]);ctx.strokeStyle=C.signal;ctx.lineWidth=2.2/s;ctx.strokeRect(cs.x,-1,cs.w,W+2);ctx.restore();
+  }
+  if(tier!=='both'&&showNums){
+    P.slots.forEach((sl,j)=>{ if((tier==='top')!==(sl.layer===1)) return;
+      planTxt(sl.x+sl.w/2,W/2,String(sl.step),{size:clamp(Math.round(11*Math.min(1.1,s)),8,12),color:j<st.placed?C.baleInk:C.muted});});
+  }
+  const f=st.fork;
+  if(P.kind!=='flatbed'){
+    const y0=W/2;
+    if(f.load){const x0=f.fx-f.load.off-f.load.w,ch=W/P.slots[st.cur].cells.length;
+      ctx.save();ctx.globalAlpha=f.load.alpha;
+      if(f.load.cross){ctx.fillStyle=C.bale2;ctx.fillRect(x0+1,(W-55)/2,f.load.w-2,55);}
+      else P.slots[st.cur].cells.forEach((v,k)=>{if(!v)return;ctx.fillStyle=f.load.top?C.bale2:C.bale;ctx.fillRect(x0+1,k*ch+1,f.load.w-2,ch-2);ctx.strokeStyle=C.baleEdge;ctx.lineWidth=1/s;ctx.strokeRect(x0+1,k*ch+1,f.load.w-2,ch-2);});
+      ctx.restore();
+      ctx.fillStyle=C.steel; ctx.fillRect(f.fx-46,-4,46,4); ctx.fillRect(f.fx-46,W,46,4);
+      ctx.fillRect(f.fx-3,-4,4,W+8);
+    }else{ctx.fillStyle=C.steel;ctx.fillRect(f.fx-40,y0-26,40,4);ctx.fillRect(f.fx-40,y0+22,40,4);ctx.fillRect(f.fx-3,y0-26,4,52);}
+    ctx.fillStyle=C.steel; ctx.fillRect(f.fx,y0-22,9,44);
+    ctx.fillStyle=C.fork; rr(ctx,f.fx+9,y0-23,104,46,6);
+    ctx.fillStyle=C.fork2; rr(ctx,f.fx+82,y0-23,32,46,8);
+    ctx.strokeStyle=C.tire; ctx.lineWidth=2/s; ctx.strokeRect(f.fx+24,y0-19,60,38);
+    ln(ctx,f.fx+24,y0,f.fx+84,y0,1,C.tire);
+  }else{
+    const t=f.turn||0, ang=lerp(Math.PI,-Math.PI/2,t), cy=W+28;
+    ctx.save(); ctx.translate(f.cx,cy); ctx.rotate(ang);
+    ctx.fillStyle=C.fork; rr(ctx,-6,-10,40,20,4); ctx.fillStyle=C.fork2; rr(ctx,22,-10,12,20,4);
+    ctx.fillStyle=C.steel; ctx.fillRect(-10,-12,4,24); ctx.fillRect(-26,-12,16,3); ctx.fillRect(-26,9,16,3);
+    if(f.load){ctx.globalAlpha=f.load.alpha;ctx.fillStyle=f.load.top?C.bale2:C.bale;ctx.fillRect(-25,-9,15,18);}
+    ctx.restore();
+    planTxt(P.homeCx,W+28,'',{});
+  }
+  planTxt(0,-12,'FRONT',{align:'left',size:10});
+  planTxt(L,-12,P.kind==='flatbed'?'REAR':'REAR DOORS',{align:'right',size:10});
+  if(P.kind==='flatbed') planTxt(L+8,W+28,'← DRIVE LANE',{align:'left',size:10});
+}
+
+/* ---------- layout ---------- */
+function setSize(c,w,h){c.style.height=h+'px';c.width=Math.round(w*dpr);c.height=Math.round(h*dpr);c.cssW=w;c.cssH=h;}
+function layout(){
+  const w=sideC.clientWidth||sideC.parentElement.clientWidth;
+  const sw=P.xmax-P.xmin, sh=P.ymax-P.ymin;
+  s=Math.min(1.6,Math.max(w/sw,175/sh));
+  setSize(sideC,w,Math.round(sh*s));
+  P.viewW=w/s; P.follow=P.viewW<sw-1;
+  setSize(planC,w,Math.round((P.W+(P.kind==='flatbed'?50:16))*s+30));
+  camX=null;
+}
+function updateCam(st,dt){
+  const sw=P.xmax-P.xmin;
+  if(!P.follow){camX=P.xmin-(P.viewW-sw)/2;return;}
+  const f=st.fork, focus=P.kind==='flatbed'?f.cx:f.fx+40;
+  const tgt=clamp(focus-P.viewW*.45,P.xmin,P.xmax-P.viewW);
+  camX=camX==null?tgt:camX+(tgt-camX)*Math.min(1,dt*3.5);
+}
+
+/* ---------- UI ---------- */
+function setPattern(k,t){
+  kind=k; total=t;
+  P=build(k==='flatbed'?flatbed(t):enclosed(k,t));
+  T=0; playing=!reduce;
+  const bot=P.slots.filter(s=>!s.layer).reduce((a,s)=>a+bales(s),0), top=t-bot;
+  $('patName').textContent=`${KINDS[k].label} · ${t} bales${k==='container'&&t===90?' · high cube only':''}`;
+  $('patSub').textContent=`${bot} BOTTOM · ${top} TOP · ${P.slots.length} STEPS`;
+  renderPicker(); renderChips(); renderNotes(); layout(); lastKey=''; syncPlay();
+}
+function renderPicker(){
+  $('kindSeg').innerHTML=Object.entries(KINDS).map(([k,v])=>`<button data-k="${k}" aria-pressed="${k===kind}">${v.label}</button>`).join('');
+  $('countSeg').innerHTML=KINDS[kind].counts.map(n=>`<button data-n="${n}" aria-pressed="${n===total}">${n}</button>`).join('');
+}
+function renderChips(){
+  $('chips').innerHTML=P.slots.map((sl,j)=>`<button data-i="${j}" class="${sl.layer?'top':''}" title="Step ${sl.step}, ${sl.layer?'top':'bottom'} tier">${sl.step}</button>`).join('');
+}
+function renderNotes(){
+  const N=NOTES[kind]; let list;
+  if(kind==='flatbed') list=N[total]; else {list=[...N.base]; if(N[total]) list.push(N[total]);}
+  $('notes').innerHTML=list.map(x=>`<li>${x}</li>`).join('');
+  $('fine').textContent=kind==='flatbed'
+    ?'The sheet does not number flatbed steps, so the animation loads the bottom front to rear, then the top. Where the turned row and gaps sit is approximate.'
+    :'Each step is one trip with the clamp: a stack 4 wide across the trailer.';
+}
+let lastKey='';
+function updateUI(st){
+  const key=st.cur+'|'+st.placed+'|'+playing;
+  if(key===lastKey) return; lastKey=key;
+  const N=P.steps.length, loaded=P.slots.slice(0,st.placed).reduce((a,sl)=>a+bales(sl),0);
+  const r=$('readout');
+  if(st.cur>=N) r.innerHTML=`<b>Load complete</b><span>${P.total} bales in ${N} steps</span>`;
+  else{
+    const sl=P.slots[st.cur], n=bales(sl), wide=sl.cells.length;
+    if(sl.extra){
+      const txt=P.kind==='container'?`${n} bale${n>1?'s':''} laid flat, turned crosswise, in the space left at the back${n>1?', one on top of the other':''}`:`${n} bale${n>1?'s side by side':''} laid flat, long ways, on top of stacks 19 and 20`;
+      r.innerHTML=`<b>Extra grab</b><span>${txt}</span>`;
+      [...$('chips').children].forEach((b,j)=>{b.classList.toggle('done',j<st.placed);b.classList.toggle('cur',j===st.cur);});
+      return;
+    }
+    const where=P.kind==='flatbed'?`Row ${sl.pos} from the front`:`Stack ${sl.pos} from the nose`;
+    const tierTxt=sl.layer?'top tier, laid flat':'bottom tier, on end';
+    let extra=`${wide} wide`;
+    if(n<wide) extra+=` · ${n} bales${sl.cells.indexOf(0)>0&&sl.cells.indexOf(0)<wide-1?', gap in the middle':''}`;
+    else if(wide===4&&P.kind==='flatbed') extra='turned 4 wide';
+    r.innerHTML=`<b>Step ${sl.step} of ${N}</b><span>${where} · ${tierTxt} · ${extra}</span>`;
+  }
+  [...$('chips').children].forEach((b,j)=>{b.classList.toggle('done',j<st.placed);b.classList.toggle('cur',j===st.cur);});
+}
+function syncPlay(){$('play').textContent=playing?'Pause':(T>=P.time?'Replay':'Play');lastKey='';}
+function curIndex(){if(T>=P.time)return P.steps.length;let i=0;while(i<P.steps.length-1&&P.steps[i+1].t0<=T)i++;return i;}
+
+$('kindSeg').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;const k=b.dataset.k;setPattern(k,total);});
+$('countSeg').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;setPattern(kind,+b.dataset.n);});
+$('chips').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;T=P.steps[+b.dataset.i].t0;camX=null;lastKey='';});
+$('play').onclick=()=>{if(T>=P.time){T=0;camX=null;}playing=!playing;syncPlay();};
+$('restart').onclick=()=>{T=0;camX=null;playing=true;syncPlay();};
+$('prev').onclick=()=>{const N=P.steps.length,i=curIndex();
+  if(i>=N)T=P.steps[N-1].t0;else if(T-P.steps[i].t0>.25)T=P.steps[i].t0;else T=P.steps[Math.max(0,i-1)].t0;camX=null;syncPlay();};
+$('next').onclick=()=>{const N=P.steps.length,i=curIndex();T=i+1<N?P.steps[i+1].t0:P.time;camX=null;syncPlay();};
+$('speedSeg').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;speed=+b.dataset.s;
+  [...$('speedSeg').children].forEach(x=>x.setAttribute('aria-pressed',x===b));});
+$('tierSeg').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;tier=b.dataset.t;
+  [...$('tierSeg').children].forEach(x=>x.setAttribute('aria-pressed',x===b));});
+$('nums').onchange=e=>{showNums=e.target.checked;};
+new ResizeObserver(()=>{if(P)layout();}).observe(document.querySelector('.stage'));
+
+setPattern('container',88);
+let last=performance.now();
+function frame(now){
+  const dt=Math.min(.05,(now-last)/1000); last=now;
+  if(playing){T+=dt*speed; if(T>=P.time){T=P.time;playing=false;syncPlay();}}
+  const st=stateAt(T);
+  updateCam(st,dt); drawSide(st); drawPlan(st); updateUI(st);
+  requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
+})();
+</script>
+
+</body>
+</html>
