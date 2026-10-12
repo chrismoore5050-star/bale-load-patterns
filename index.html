@@ -12,7 +12,7 @@
 :root{
   --bg:#E8EBEA; --panel:#F6F7F6; --ink:#1B2124; --muted:#5A6569; --line:#C8CFCE;
   --fork:#E3A317; --fork2:#B67D0A; --steel:#4A535A; --steel2:#7F8A90; --tire:#202427;
-  --bale:#FBFAF5; --bale2:#E4DECB; --baleEdge:#9A9588; --baleInk:#4A4538; --tie:#6C7E91;
+  --bale:#FBFAF5; --bale2:#E4DECB; --baleEdge:#9A9588; --baleInk:#4A4538; --tie:#1E9A7A;
   --wall:#D7DDDC; --wallLine:#C2CACA; --floor:#8C7154; --ground:#BEC4C1; --dock:#A7AEAB;
   --signal:#D2461C; --chip:#EEF1F0;
   --display:"Barlow Condensed","Arial Narrow",sans-serif;
@@ -22,14 +22,14 @@
 @media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
   --bg:#121618; --panel:#1A2023; --ink:#E4E9E8; --muted:#95A1A4; --line:#2E373A;
   --fork:#E2A21A; --fork2:#A6720F; --steel:#7F8A90; --steel2:#56616A; --tire:#0A0C0D;
-  --bale:#E8E4D8; --bale2:#C8C0AA; --baleEdge:#8C877A; --baleInk:#3E392E; --tie:#7A8DA1;
+  --bale:#E8E4D8; --bale2:#C8C0AA; --baleEdge:#8C877A; --baleInk:#3E392E; --tie:#2FB592;
   --wall:#20272A; --wallLine:#2A3336; --floor:#6E5841; --ground:#2A3034; --dock:#363D40;
   --signal:#FF6B3D; --chip:#20272A; color-scheme:dark;
 }}
 :root[data-theme="dark"]{
   --bg:#121618; --panel:#1A2023; --ink:#E4E9E8; --muted:#95A1A4; --line:#2E373A;
   --fork:#E2A21A; --fork2:#A6720F; --steel:#7F8A90; --steel2:#56616A; --tire:#0A0C0D;
-  --bale:#E8E4D8; --bale2:#C8C0AA; --baleEdge:#8C877A; --baleInk:#3E392E; --tie:#7A8DA1;
+  --bale:#E8E4D8; --bale2:#C8C0AA; --baleEdge:#8C877A; --baleInk:#3E392E; --tie:#2FB592;
   --wall:#20272A; --wallLine:#2A3336; --floor:#6E5841; --ground:#2A3034; --dock:#363D40;
   --signal:#FF6B3D; --chip:#20272A; color-scheme:dark;
 }
@@ -37,7 +37,9 @@
 body{background:var(--bg);color:var(--ink);font:400 15px/1.5 var(--body);}
 .wrap{max-width:1120px;margin:0 auto;padding-inline:16px;padding-block:20px 40px;display:flex;flex-direction:column;gap:18px}
 .eyebrow{font:600 12px var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
-h1{font:700 clamp(30px,6vw,46px)/1 var(--display);letter-spacing:.01em;margin:4px 0 6px;text-wrap:balance}
+h1{font:700 clamp(30px,6vw,46px)/1 var(--display);letter-spacing:.01em;margin:4px 0 6px;text-wrap:balance;user-select:none;-webkit-user-select:none;-webkit-tap-highlight-color:transparent}
+.counts button.hc{border-style:dashed}
+.warn{color:var(--signal);font-weight:600}
 .lede{margin:0;color:var(--muted);max-width:62ch}
 .picker{display:flex;flex-wrap:wrap;gap:10px 18px;align-items:center}
 .seg{display:inline-flex;border:1px solid var(--line);border-radius:6px;overflow:hidden;background:var(--panel)}
@@ -163,9 +165,48 @@ const MONO='"IBM Plex Mono", ui-monospace, monospace';
 const reduce=matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 const KINDS={container:{label:'Container',counts:[90,89,88,87,86]},van:{label:'53 ft van',counts:[90,89,88,87,86]}};
+/* Hidden high cube loads (91-102): tap the title 5 times quickly to show them. Locked again on every launch. */
+let hcOn=false;
+const HC_COUNTS=[102,101,100,99,98,97,96,95,94,93,92,91];
+function applyHc(){KINDS.container.counts=hcOn?[...HC_COUNTS,90,89,88,87,86]:[90,89,88,87,86];}
+applyHc();
 
 /* ---------- patterns ---------- */
+function hcPlan(N){
+  const RL=54.5,usable=470;
+  for(let k=0;k<=8;k++){
+    const R=usable-RL*k,nb=Math.floor(R/33),nt=Math.floor(nb*33/55),left=nb*33-nt*55,e=left>=20?2:0;
+    const c={k,nb,nt,e,cap:12*k+4*nb+4*nt+e};
+    if(c.cap>=N) return c;
+  }
+}
+function hcLoad(N){
+  const x0=4,L=474,RL=54.5,slots=[];let step=1;
+  const c=hcPlan(N);
+  for(let r=0;r<c.k;r++) for(let g=0;g<3;g++)
+    slots.push({step:step++,layer:g,row:r+1,grab:g,laid:true,x:x0+r*RL,w:RL,h:33,y:33*g,cells:[1,1,1,1]});
+  const xs=x0+c.k*RL, bottoms=[], tops=[];
+  let tj=0;
+  for(let b=0;b<c.nb;b++){
+    const sl={step:step++,layer:0,stackNo:b+1,x:xs+b*33,w:33,h:55,y:0,cells:[1,1,1,1]};
+    slots.push(sl); bottoms.push(sl);
+    while(tj<c.nt && (b+1)*33>=(tj+1)*55){const t={step:step++,layer:1,topNo:tj+1,x:xs+tj*55,w:55,h:33,y:55,cells:[1,1,1,1]};slots.push(t);tops.push(t);tj++;}
+  }
+  let extra=null;
+  if(c.e){const ex=xs+c.nt*55,eend=xs+c.nb*33;
+    extra={step:'+',extra:true,cross:true,layer:1,x:ex,w:eend-ex,h:21*c.e,y:55,stack:c.e,cells:Array(c.e).fill(1)};slots.push(extra);}
+  // fewer bales: drop the extra bales first, then short the last top stack, then the last bottom stack
+  let d=c.cap-N;
+  if(d>0&&extra){const take=Math.min(d,c.e);const keep=c.e-take;d-=take;
+    if(keep===0) slots.splice(slots.indexOf(extra),1);
+    else{extra.stack=keep;extra.h=21*keep;extra.cells=Array(keep).fill(1);}}
+  const shorten=sl=>{while(d>0&&sl&&sl.cells.reduce((a,b)=>a+b,0)>2){const i=sl.cells.lastIndexOf(1);sl.cells[i]=0;d--;}};
+  shorten(tops[tops.length-1]); shorten(bottoms[bottoms.length-1]);
+  const F=52,IH=106,homeFx=L+175;
+  return {kind:'container',hc:true,plan:c,total:N,L,W:92,F,IH,slots,homeFx,xmin:-30,xmax:homeFx+124,ymin:-8,ymax:F+IH+26};
+}
 function enclosed(kind,total){
+  if(kind==='container'&&total>90) return hcLoad(total);
   const t=33,x0=4,L=kind==='container'?474:630;
   const topSteps=kind==='container'?[3,6,8,11,14,16,19,22]:[6,9,12,15,18];
   const slots=[],bottoms=[];let tj=0;
@@ -183,7 +224,7 @@ function enclosed(kind,total){
     const n=total-88;
     if(kind==='container'){
       const end=x0+bottoms.length*t, topEnd=x0+8*55;
-      slots.push({step:'+',extra:true,cross:true,layer:1,x:topEnd,w:L-topEnd,h:21*n,y:55,stack:n,cells:Array(n).fill(1)});
+      slots.push({step:'+',extra:true,cross:true,layer:1,x:topEnd,w:end-topEnd,h:21*n,y:55,stack:n,cells:Array(n).fill(1)});
     }else{
       const a=bottoms.find(b=>b.step===19),b=bottoms.find(b=>b.step===20),c=(a.x+b.x+t)/2;
       const idx=slots.indexOf(b)+1;
@@ -211,7 +252,8 @@ const NOTES={
     87:'87-bale load: load the same way. The last stack on top gets 3 bales.',
     86:'86-bale load: load the same way. The last stack on top gets 2 bales.',
     89:'89-bale load: after the last grab, lay 1 extra bale flat, turned crosswise, in the small space left at the back on top of the last stacks.',
-    90:'90-bale load: same spot, 2 extra bales laid flat on top of each other. High cube containers only; a standard container is too low.'},
+    90:'90-bale load: same spot, 2 extra bales laid flat on top of each other. High cube containers only; a standard container is too low.',
+    102:['102-bale load: high cube containers only.','8 rows from the front. Each row is 3 grabs high (bottom, middle, top), 4 bales across, bales laid flat long ways: 96 bales.','Finish each row, bottom to top, before starting the next row.','At the back: 4 bales standing on end, then the 2 extra bales laid flat on top, one on the other: 6 bales.']},
   van:{
     base:['68 bales on the bottom: 17 stacks, 4 wide.','20 bales on top: 5 stacks, 4 wide, at steps 6, 9, 12, 15 and 18.','Follow the number steps.'],
     87:'87-bale load: load the same way. The last stack (step 22) gets 3 bales.',
@@ -247,7 +289,7 @@ function build(P){
   });
   P.time=t;
   // position labels within tier
-  [0,1].forEach(l=>P.slots.filter(s=>s.layer===l&&!s.extra).sort((a,b)=>a.x-b.x).forEach((s,i)=>s.pos=i+1));
+  [0,1,2].forEach(l=>P.slots.filter(s=>s.layer===l&&!s.extra).sort((a,b)=>a.x-b.x).forEach((s,i)=>s.pos=i+1));
   return P;
 }
 
@@ -263,7 +305,7 @@ function stateAt(T){
   const st=P.steps[i],sl=st.slot; let u=T-st.t0,name=st.ph[st.ph.length-1][0],k=1;
   for(const [n,d] of st.ph){ if(u<d){name=n;k=d>0?u/d:1;break;} u-=d; }
   const e=sm(clamp(k,0,1));
-  const L={w:sl.w,h:sl.h,off:st.off,top:sl.layer===1,alpha:1,stack:sl.stack,cross:sl.cross};
+  const L={w:sl.w,h:sl.h,off:st.off,top:sl.layer>0,alpha:1,stack:sl.stack,cross:sl.cross};
   let placed=i,f;
   if(P.kind!=='flatbed'){
     const H=st.fx,hm=P.homeFx,ty=sl.y;
@@ -310,9 +352,9 @@ function bale(ctx,x,y,w,h,o={}){
     ctx.strokeStyle=C.baleEdge; ctx.lineWidth=1/s; ctx.stroke(); ctx.restore(); return;}
   ctx.save(); if(o.alpha!=null) ctx.globalAlpha*=o.alpha;
   ctx.fillStyle=o.top?C.bale2:C.bale; ctx.fillRect(x,y,w,h);
-  ctx.strokeStyle=C.tie; ctx.lineWidth=1.1/s; ctx.beginPath();
-  if(h>=w){for(let k=1;k<=5;k++){const yy=y+h*k/6;ctx.moveTo(x,yy);ctx.lineTo(x+w,yy);}}
-  else{for(let k=1;k<=5;k++){const xx=x+w*k/6;ctx.moveTo(xx,y);ctx.lineTo(xx,y+h);}}
+  ctx.strokeStyle=C.tie; ctx.lineWidth=1.6/s; ctx.beginPath();
+  if(h>=w){for(let k=1;k<=6;k++){const yy=y+h*k/7;ctx.moveTo(x,yy);ctx.lineTo(x+w,yy);}}
+  else{for(let k=1;k<=6;k++){const xx=x+w*k/7;ctx.moveTo(xx,y);ctx.lineTo(xx,y+h);}}
   ctx.stroke();
   ctx.strokeStyle=C.baleEdge; ctx.lineWidth=1/s; ctx.strokeRect(x,y,w,h);
   ctx.restore();
@@ -388,7 +430,7 @@ function drawFork(ctx,f,base){
 /* ---------- side view ---------- */
 function drawSlots(ctx,st,base){
   P.slots.forEach((sl,j)=>{
-    if(j<st.placed) bale(ctx,sl.x,base+sl.y,sl.w,sl.h,{top:sl.layer===1,stack:sl.stack,cross:sl.cross});
+    if(j<st.placed) bale(ctx,sl.x,base+sl.y,sl.w,sl.h,{top:sl.layer>0,stack:sl.stack,cross:sl.cross});
     else ghost(ctx,sl.x,base+sl.y,sl.w,sl.h,j===st.cur);
   });
 }
@@ -472,9 +514,10 @@ function drawPlan(st){
   else{ctx.fillStyle=C.dock;ctx.fillRect(L+8,-12,P.xmax,W+24);}
   ctx.fillStyle=P.kind==='flatbed'?C.floor:C.wall; ctx.save(); if(P.kind==='flatbed') ctx.globalAlpha=.35; ctx.fillRect(0,0,L,W); ctx.restore();
   ctx.strokeStyle=C.steel; ctx.lineWidth=2/s; ctx.strokeRect(0,0,L,W);
+  const order=P.slots.map((sl,j)=>j).sort((a,b)=>P.slots[a].layer-P.slots[b].layer);
   const drawTier=(layer,faint)=>{
-    P.slots.forEach((sl,j)=>{
-      if(sl.layer!==layer) return;
+    order.forEach(j=>{const sl=P.slots[j];
+      if(layer===1?sl.layer<1:sl.layer!==layer) return;
       const n=sl.cells.length,ch=W/n,done=j<st.placed;
       if(sl.cross){const y=(W-55)/2;
         if(done){ctx.fillStyle=C.bale2;ctx.fillRect(sl.x+1,y,sl.w-2,55);ctx.strokeStyle=C.baleEdge;ctx.lineWidth=1/s;ctx.strokeRect(sl.x+1,y,sl.w-2,55);}
@@ -486,21 +529,22 @@ function drawPlan(st){
       }
       sl.cells.forEach((v,k)=>{
         const y=k*ch;
-        if(v){ctx.fillStyle=layer?C.bale2:C.bale; ctx.fillRect(sl.x+1,y+1,sl.w-2,ch-2);
+        if(v){ctx.fillStyle=sl.layer?C.bale2:C.bale; ctx.fillRect(sl.x+1,y+1,sl.w-2,ch-2);
           ctx.strokeStyle=C.baleEdge; ctx.lineWidth=1/s; ctx.strokeRect(sl.x+1,y+1,sl.w-2,ch-2);}
         else{ctx.save();ctx.setLineDash([3/s,3/s]);ctx.strokeStyle=C.muted;ctx.lineWidth=1/s;ctx.strokeRect(sl.x+3,y+3,sl.w-6,ch-6);ctx.restore();}
       });
     });
   };
   if(tier==='both'){drawTier(0);drawTier(1);}
+  else if(tier==='bottom'&&P.hc){drawTier(0);}
   else if(tier==='bottom'){drawTier(0);}
   else{drawTier(0,true);drawTier(1);}
   const cs=P.slots[st.cur];
-  if(cs&&st.cur>=st.placed&&(tier==='both'||(tier==='top')===(cs.layer===1))){
+  if(cs&&st.cur>=st.placed&&(tier==='both'||(tier==='top')===(cs.layer>0))){
     ctx.save();ctx.setLineDash([5/s,3/s]);ctx.strokeStyle=C.signal;ctx.lineWidth=2.2/s;ctx.strokeRect(cs.x,-1,cs.w,W+2);ctx.restore();
   }
   if(tier!=='both'&&showNums){
-    P.slots.forEach((sl,j)=>{ if((tier==='top')!==(sl.layer===1)) return;
+    P.slots.forEach((sl,j)=>{ if((tier==='top')!==(sl.layer>0)) return;
       planTxt(sl.x+sl.w/2,W/2,String(sl.step),{size:clamp(Math.round(11*Math.min(1.1,s)),8,12),color:j<st.placed?C.baleInk:C.muted});});
   }
   const f=st.fork;
@@ -554,28 +598,36 @@ function updateCam(st,dt){
 
 /* ---------- UI ---------- */
 function setPattern(k,t){
+  if(!KINDS[k].counts.includes(t)) t=KINDS[k].counts.includes(88)?88:KINDS[k].counts[0];
   kind=k; total=t;
   P=build(k==='flatbed'?flatbed(t):enclosed(k,t));
   T=0; playing=!reduce;
   const bot=P.slots.filter(s=>!s.layer).reduce((a,s)=>a+bales(s),0), top=t-bot;
-  $('patName').textContent=`${KINDS[k].label} · ${t} bales${k==='container'&&t===90?' · high cube only':''}`;
-  $('patSub').textContent=`${bot} BOTTOM · ${top} TOP · ${P.slots.length} STEPS`;
+  $('patName').textContent=`${KINDS[k].label} · ${t} bales${k==='container'&&t>=90?' · high cube only':''}${k==='container'&&t>90&&t<102?' · not yet confirmed':''}`;
+  $('patSub').textContent=P.hc?`${P.plan.k} LAID-DOWN ROW${P.plan.k>1?'S':''} · ${t-12*P.plan.k} IN THE NORMAL PATTERN · ${P.slots.length} STEPS`:`${bot} BOTTOM · ${top} TOP · ${P.slots.length} STEPS`;
   renderPicker(); renderChips(); renderNotes(); layout(); lastKey=''; syncPlay();
 }
 function renderPicker(){
   $('kindSeg').innerHTML=Object.entries(KINDS).map(([k,v])=>`<button data-k="${k}" aria-pressed="${k===kind}">${v.label}</button>`).join('');
-  $('countSeg').innerHTML=KINDS[kind].counts.map(n=>`<button data-n="${n}" aria-pressed="${n===total}">${n}</button>`).join('');
+  $('countSeg').innerHTML=KINDS[kind].counts.map(n=>`<button data-n="${n}" aria-pressed="${n===total}"${n>90?' class="hc" title="High cube only"':''}>${n}</button>`).join('');
 }
 function renderChips(){
   $('chips').innerHTML=P.slots.map((sl,j)=>`<button data-i="${j}" class="${sl.layer?'top':''}" title="Step ${sl.step}, ${sl.layer?'top':'bottom'} tier">${sl.step}</button>`).join('');
 }
 function renderNotes(){
   const N=NOTES[kind]; let list;
-  if(kind==='flatbed') list=N[total]; else {list=[...N.base]; if(N[total]) list.push(N[total]);}
+  if(P.hc){const c=P.plan,ex=P.slots.find(s=>s.extra),exn=ex?ex.stack:0;
+    const sh=P.slots.filter(s=>!s.extra&&s.cells.includes(0));
+    list=[...(total<102?['<b class="warn">Not yet confirmed. Check with a lead before loading this pattern.</b>']:[]),`${total}-bale load: high cube containers only.`,
+      `Front: ${c.k} row${c.k>1?'s':''} laid flat long ways. Each row is 3 grabs high (bottom, middle, top), 4 bales across: ${12*c.k} bales. Finish each row before starting the next.`];
+    if(c.nb) list.push(`Then back to the normal pattern: ${c.nb} stack${c.nb>1?'s':''} standing on end${c.nt?`, ${c.nt} stack${c.nt>1?'s':''} laid flat on top`:''}, in step order.`);
+    if(exn) list.push(`Last: ${exn} extra bale${exn>1?'s':''} laid flat, turned crosswise, on top at the back${exn>1?', one on the other':''}.`);
+    sh.forEach(s=>list.push(`Step ${s.step} is a short stack: ${bales(s)} bales.`));}
+  else if(kind==='flatbed'||Array.isArray(N[total])) list=N[total]; else {list=[...N.base]; if(N[total]) list.push(N[total]);}
   $('notes').innerHTML=list.map(x=>`<li>${x}</li>`).join('');
   $('fine').textContent=kind==='flatbed'
     ?'The sheet does not number flatbed steps, so the animation loads the bottom front to rear, then the top. Where the turned row and gaps sit is approximate.'
-    :'Each step is one trip with the clamp: a stack 4 wide across the trailer.';
+    :P.hc?'Each step is one trip with the clamp: one grab of 4 bales across the container.':'Each step is one trip with the clamp: a stack 4 wide across the trailer.';
 }
 let lastKey='';
 function updateUI(st){
@@ -587,8 +639,17 @@ function updateUI(st){
   else{
     const sl=P.slots[st.cur], n=bales(sl), wide=sl.cells.length;
     if(sl.extra){
-      const txt=P.kind==='container'?`${n} bale${n>1?'s':''} laid flat, turned crosswise, in the space left at the back${n>1?', one on top of the other':''}`:`${n} bale${n>1?'s side by side':''} laid flat, long ways, on top of stacks 19 and 20`;
+      const txt=P.hc?`${n} bale${n>1?'s':''} laid flat, turned crosswise, on top at the back${n>1?', one on top of the other':''}`:P.kind==='container'?`${n} bale${n>1?'s':''} laid flat, turned crosswise, in the space left at the back${n>1?', one on top of the other':''}`:`${n} bale${n>1?'s side by side':''} laid flat, long ways, on top of stacks 19 and 20`;
       r.innerHTML=`<b>Extra grab</b><span>${txt}</span>`;
+      [...$('chips').children].forEach((b,j)=>{b.classList.toggle('done',j<st.placed);b.classList.toggle('cur',j===st.cur);});
+      return;
+    }
+    if(P.hc){
+      const nn=bales(sl);
+      const t2=sl.laid?`Laid-down row ${sl.row} of ${P.plan.k} · ${['bottom','middle','top'][sl.grab]} grab · 4 across, laid flat long ways`
+        :sl.layer?`Normal pattern · top stack ${sl.topNo} · laid flat${nn<4?` · ${nn} bales`:''}`
+        :`Normal pattern · stack ${sl.stackNo} · standing on end${nn<4?` · ${nn} bales`:''}`;
+      r.innerHTML=`<b>Step ${sl.step} of ${N}</b><span>${t2}</span>`;
       [...$('chips').children].forEach((b,j)=>{b.classList.toggle('done',j<st.placed);b.classList.toggle('cur',j===st.cur);});
       return;
     }
@@ -617,6 +678,12 @@ $('speedSeg').addEventListener('click',e=>{const b=e.target.closest('button');if
 $('tierSeg').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;tier=b.dataset.t;
   [...$('tierSeg').children].forEach(x=>x.setAttribute('aria-pressed',x===b));});
 $('nums').onchange=e=>{showNums=e.target.checked;};
+(function(){let taps=[];document.querySelector('h1').addEventListener('click',()=>{
+  const now=Date.now(); taps=taps.filter(t=>now-t<2500); taps.push(now);
+  if(taps.length<5) return; taps=[];
+  hcOn=!hcOn;
+  applyHc(); if(hcOn) setPattern('container',102); else setPattern(kind,total);
+});})();
 new ResizeObserver(()=>{if(P)layout();}).observe(document.querySelector('.stage'));
 
 setPattern('container',88);
